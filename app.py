@@ -1,12 +1,8 @@
 import streamlit as st
 import pandas as pd
 from report_class import data_analysis
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import seaborn as sns
 import plotly.express as px
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
 
 st.set_page_config(layout="wide",
                    page_title="Data Analysis App",
