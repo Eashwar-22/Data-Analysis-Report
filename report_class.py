@@ -1,11 +1,5 @@
 import pandas as pd
 import warnings
-
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-import seaborn as sns
-
-from IPython.core import display as ICD
 import streamlit as st
 
 class data_analysis:
@@ -31,8 +25,6 @@ class data_analysis:
                                      'File Type':[self.extn],
                                      'Table Size':[str(self.data.shape[0])+" x "+str(self.data.shape[-1])]})
 
-
-
     def column_summary(self):
         self.col_sum = pd.DataFrame(self.data.dtypes,
                                         columns=['Datatype'])
@@ -47,7 +39,6 @@ class data_analysis:
                                                                                      else " ")
         self.col_sum = self.col_sum.set_index("index")
         self.vdistinct_cols = [col for col in self.data.columns if (self.data[col].nunique()<=5) and (self.data[col].dtypes=='O')]
-
 
     def return_col_summary(self,col,type):
         ind_sum = {}
@@ -64,6 +55,7 @@ class data_analysis:
         else:
             ind_sum['Cardinality'] = "Very Low"
         ind_sum['Distinct %'] = str(round(ind_sum['Distinct Values']*100/ind_sum['Total Values'],2))+" %"
+
         if type in ['int64','int32','float64','float32','int','float']:
             ind_sum['Minimum'] = round(float(self.data[col].min()),2)
             ind_sum['Maximum'] = round(float(self.data[col].max()),2)
@@ -72,57 +64,45 @@ class data_analysis:
             ind_sum['50%'] = round(float(self.data[col].quantile(0.50)), 2)
             ind_sum['75%'] = round(float(self.data[col].quantile(0.75)), 2)
             ind_sum['Skew'] = round(float(self.data[col].skew()), 2)
-            ind_sum['Memory Usage'] = str(round(self.data[col].memory_usage()*1e-6,2))+" MB"
+
         elif type=='O':
             most_occurring = round(self.data[col].value_counts()[0] * 100 / ind_sum['Total Values'],2)
             least_occurring = round(self.data[col].value_counts()[-1] * 100 / ind_sum['Total Values'],2)
 
             ind_sum['Most Occurring Value'] = str(self.data[col].value_counts().index[0]) + f" ({most_occurring} %)"
             ind_sum['Least Occurring Value'] = str(self.data[col].value_counts().index[-1]) + f" ({least_occurring} %)"
+        ind_sum['Memory Usage'] = str(round(self.data[col].memory_usage() * 1e-6, 2)) + " MB"
         return ind_sum
 
-    def return_catcol_summary(self,col,col_length):
-        flag=1
-        if col_length > 8:
-            col_length=8
-            flag=0
-        self.vals = self.data[col].value_counts().head(col_length)
-        if flag==0:
+    def col_headlength(self,col,limit):
+        self.col_length = int(self.data[col].nunique())
+        self.flag_1=1
+        if self.col_length > limit:
+            self.col_length = limit
+            self.flag_1 = 0
+        return self.col_length
+
+    def return_catcol_summary(self,col):
+        col_length = self.col_headlength(col,8) # top 8 values at max
+        if col_length<8:
+            self.vals = self.data[col].value_counts()
+        else:
+            self.vals = self.data[col].value_counts().head(col_length)
+
+        if self.flag_1==0:
             self.vals = self.vals.append(pd.Series([self.data[col].value_counts().iloc[col_length:].sum()],index=['Others']))
         self.vals_df = pd.DataFrame(self.vals,columns=['Frequency'])
-        self.vals_df['%'] = ((self.vals_df['Frequency'] * 100/ self.return_col_summary(col,"object")['Total Values']).astype(int)).astype(str) + " %"
+        self.vals_df['%'] = ((self.vals_df['Frequency'] * 100/ self.return_col_summary(col,"O")['Total Values']).round(2)).astype(str) + " %"
         return self.vals_df
 
-
-
-
-
-
-
-
-    def return_missing_data(self, plot=False):
+    def return_missing_data(self):
         self.miss = self.data.isnull()
-        self.miss_summary = pd.DataFrame(self.miss.sum(),
-                                         columns=['Missing Rows'])
-        print("Summary of Missing Data")
-        ICD.display(self.miss_summary)
-        if plot:
-            fig, ax = plt.subplots(2, 1, figsize=(15, 15))
-            if len(self.data.columns) < 15:
-                sns.heatmap(self.miss,
-                            cmap="YlGnBu",
-                            ax=ax[0])
-                ax[0].set_title("Missing Data", fontsize=16)
+        self.miss_summary = pd.DataFrame(self.miss.sum()).reset_index()
+        self.miss_summary.columns=['Column Name','Missing Rows']
+        self.miss_summary['Within Column %'] = ((self.miss_summary['Missing Rows']*100/len(self.data)).round(2)).astype(str) + " %"
+        self.miss_summary['Overall Contribution %'] = ((self.miss_summary['Missing Rows']*100 / self.miss_summary['Missing Rows'].sum()).round(2)).astype(str) + " %"
+        self.miss_label=self.miss.replace({True:"Missing",False:"Not Missing"})
+        return self.miss_summary
 
-                temp = self.miss_summary.reset_index()
-                sns.barplot(x='Missing Rows',
-                            y="index",
-                            data=temp[temp['Missing Rows'] != 0],
-                            ax=ax[1])
-                ax[1].set_ylabel("Columns", fontsize=16)
-                ax[1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-                ax[1].set_xlabel("Missing Rows", fontsize=16)
-
-                plt.show()
 
 
