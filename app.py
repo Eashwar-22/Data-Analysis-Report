@@ -4,6 +4,7 @@ from report_class import data_analysis
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 st.set_page_config(layout="wide",
                    page_title="Data Analysis App",
                    page_icon="‍🗞")
